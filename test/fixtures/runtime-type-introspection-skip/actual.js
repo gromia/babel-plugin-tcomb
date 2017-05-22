@@ -1,4 +1,3 @@
-// @tcomb
 type U = 'foo' | 'bar' | 'baz';
 
 export type Person = {

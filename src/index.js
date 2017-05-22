@@ -31,10 +31,6 @@ const RESERVED_NAMES = {
   [MAGIC_REIFY_NAME]: true
 }
 
-// plugin config
-
-const WARN_ON_FAILURE_OPTION = 'warnOnFailure'
-
 function assign(x, y) {
   if (y) {
     for (let k in y) {
@@ -45,7 +41,6 @@ function assign(x, y) {
 }
 
 export default function ({ types: t, template }) {
-
   let tcombId = null
   let assertId = null
   let extendId = null
@@ -479,6 +474,14 @@ export default function ({ types: t, template }) {
     ])
   }
 
+  function isRuntimeTypeIntrospection(node) {
+    return node.typeAnnotation && node.typeAnnotation.typeAnnotation && node.typeAnnotation.typeAnnotation.id && node.typeAnnotation.typeAnnotation.id.name === MAGIC_REIFY_NAME;
+  }
+
+  function getRuntimeTypeIntrospection(node) {
+    return node.typeAnnotation.typeAnnotation.typeParameters.params[0].id;
+  }
+
   //
   // visitors
   //
@@ -524,6 +527,19 @@ export default function ({ types: t, template }) {
           }
         }
 
+      },
+
+      TypeCastExpression: function TypeCastExpression(path, state) {
+        var node = path.node;
+        if (isRuntimeTypeIntrospection(node)) {
+          try {
+            path.replaceWith(getRuntimeTypeIntrospection(node));
+          } catch (error) {
+            buildCodeFrameError(
+              path,
+              new Error('Invalid use of ' + MAGIC_REIFY_NAME + ', example: const ReifiedMyType = (({}: any): $Reify<MyType>)'));
+          }
+        }
       },
 
       TypeAlias(path) {

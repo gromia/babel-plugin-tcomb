@@ -41,10 +41,21 @@ function assign(x, y) {
 }
 
 export default function ({ types: t, template }) {
+  let processMap = {};
   let tcombId = null
   let assertId = null
   let extendId = null
   let globals
+
+
+  function setShouldProcess(state) {
+    processMap[state.file.opts.filename] = true;
+  }
+
+  function shouldProcess(state) {
+    console.log(processMap);
+    return !!processMap[state.file.opts.filename];
+  }
 
   // combinators
 
@@ -490,14 +501,14 @@ export default function ({ types: t, template }) {
 
       Program: {
         enter(path, state) {
-          state.hasTcombDirective = false
           tcombId = path.scope.generateUidIdentifier('t')
           assertId = path.scope.generateUidIdentifier('assert')
           extendId = path.scope.generateUidIdentifier('extend')
 
           state.file.ast.comments.forEach(comment => {
             if (comment.value.indexOf(TCOMB_DIRECTIVE) >= 0) {
-              state.hasTcombDirective = true
+              setShouldProcess(state);
+
               // remove tcomb directive
               comment.value = comment.value.replace(TCOMB_DIRECTIVE, "");
 
@@ -514,23 +525,21 @@ export default function ({ types: t, template }) {
         },
 
         exit(path, state) {
-          const isImportTcombRequired = state.hasTcombDirective;
-          state.hasTcombDirective = false;
-
-          if (isImportTcombRequired) {
-            path.node.body.unshift(
-              t.importDeclaration([
-                t.importDefaultSpecifier(tcombId)],
-                t.stringLiteral('tcomb')
-              )
-            )
+          if (!shouldProcess(state)) {
+            return;
           }
-        }
 
+          path.node.body.unshift(
+            t.importDeclaration([
+              t.importDefaultSpecifier(tcombId)],
+              t.stringLiteral('tcomb')
+            )
+          )
+        }
       },
 
       TypeCastExpression: function TypeCastExpression(path, state) {
-        if (!state.hasTcombDirective) {
+        if (!shouldProcess(state)) {
           return;
         }
 
@@ -547,7 +556,7 @@ export default function ({ types: t, template }) {
       },
 
       TypeAlias(path, state) {
-        if (!state.hasTcombDirective) {
+        if (!shouldProcess(state)) {
           return;
         }
 
@@ -556,7 +565,7 @@ export default function ({ types: t, template }) {
       },
 
       ExportNamedDeclaration(path, state) {
-        if (!state.hasTcombDirective) {
+        if (!shouldProcess(state)) {
           return;
         }
 
@@ -568,7 +577,7 @@ export default function ({ types: t, template }) {
       },
 
       ImportDeclaration(path, state) {
-        if (!state.hasTcombDirective) {
+        if (!shouldProcess(state)) {
           return;
         }
 

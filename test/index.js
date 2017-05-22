@@ -179,9 +179,7 @@ describe('emit asserts for: ', () => {
           plugins: [
             'syntax-async-functions',
             'syntax-flow',
-            [plugin, {
-              skipHelpers: true
-            }],
+            plugin,
             'transform-flow-strip-types',
             'transform-object-rest-spread'
           ]
